@@ -1,0 +1,13 @@
+{
+    "manifest_version": 3,
+    "name": "Youtube PLayist Length Calculator",
+    "version": "1.0",
+    "permissions": [
+      "tabs",
+      "storage"
+    ],
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }
+  

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube Playlist Length</title>
+  <style>
+    /* Set the popup's body width */
+    body {
+      font-family: roboto;
+      width: 500px; /* Set a fixed width for the popup */
+      font-size: 16px;
+      margin: 0 auto; /* Centers the content horizontally */
+    }
+
+    /* Style the content container with a shadow instead of a border */
+    .container {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Adds a soft shadow */
+      padding: 1rem;
+      margin: 0 auto;
+      white-space: nowrap; /* Prevents text wrapping */
+      background-color: white; /* Ensure background color is visible with shadow */
+    }
+
+    /* Center the heading */
+    h3 {
+      text-align: left;
+    }
+
+    .speed-duration {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3>YouTube Playlist Length</h3>
+    <div id="length"></div>
+    <div id="loading">Please wait while we calculate the length...</div>
+    <div id="speeds"></div>
+
+  </div>
+  <script src="get_length.js"></script>
+</body>
+</html>
