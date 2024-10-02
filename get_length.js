@@ -1,33 +1,31 @@
-// Function to check if API key is present in local storage (returns a promise)
-function checkApiKey() {
+// Function to retrieve or prompt for an API key from local storage
+function getOrPromptForApiKey() {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(['apiKey'], function(result) {
+    chrome.storage.local.get(['apiKey'], function (result) {
       if (!result.apiKey) {
-        // If API key is not present, prompt the user to enter it
         const apiKey = prompt("Please enter your API key:");
         if (apiKey) {
-          // Store the API key in local storage
-          chrome.storage.local.set({ apiKey: apiKey }, function() {
+          chrome.storage.local.set({ apiKey: apiKey }, function () {
             console.log('API key stored successfully.');
-            resolve(apiKey); // Resolve with the newly stored API key
+            resolve(apiKey);
           });
         } else {
           reject('No API key provided.');
         }
       } else {
         console.log('API key retrieved:', result.apiKey);
-        resolve(result.apiKey); // Resolve with the stored API key
+        resolve(result.apiKey);
       }
     });
   });
 }
 
-// Function to get the current tab's URL
-const getLength = () => {
+// Function to get the URL of the current active tab
+const getCurrentTabUrl = () => {
   return new Promise((resolve, reject) => {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       if (tabs.length > 0) {
-        resolve(tabs[0].url);  // Resolve with the current tab's URL
+        resolve(tabs[0].url);
       } else {
         reject('No active tab found');
       }
@@ -35,26 +33,26 @@ const getLength = () => {
   });
 };
 
-// Function to show the loading message
-const showLoadingMessage = () => {
+// Function to display the loading message
+const showLoadingIndicator = () => {
   document.getElementById('loading').style.display = 'block';
-  document.getElementById('length').textContent = ''; // Clear previous content
-  document.getElementById('speeds').innerHTML = ''; // Clear previous speed data
+  document.getElementById('length').textContent = '';
+  document.getElementById('speeds').innerHTML = '';
 };
 
 // Function to hide the loading message
-const hideLoadingMessage = () => {
+const hideLoadingIndicator = () => {
   document.getElementById('loading').style.display = 'none';
 };
 
-// Function to get playlist duration, modified to accept the API key
-const getPlaylistDuration = async (apiKey) => {
+// Function to fetch and display the total duration of a YouTube playlist
+const fetchAndDisplayPlaylistDuration = async (apiKey) => {
   try {
-    showLoadingMessage();
-    const playlistUrl = await getLength();
-    const playlistId = extractPlaylistId(playlistUrl);
+    showLoadingIndicator();
+    const playlistUrl = await getCurrentTabUrl();
+    const playlistId = extractPlaylistIdFromUrl(playlistUrl);
     if (playlistId) {
-      await getPlaylistTotalDuration(playlistId, apiKey);  // Pass API key to function
+      await calculateAndDisplayTotalDuration(playlistId, apiKey);
     } else {
       document.getElementById('length').textContent = 'Invalid playlist URL';
     }
@@ -62,18 +60,18 @@ const getPlaylistDuration = async (apiKey) => {
     document.getElementById('length').textContent = 'Error fetching playlist URL';
     console.error(error);
   } finally {
-    hideLoadingMessage();
+    hideLoadingIndicator();
   }
 };
 
-// Function to extract the playlist ID from the URL
-function extractPlaylistId(url) {
+// Function to extract the playlist ID from a URL
+function extractPlaylistIdFromUrl(url) {
   const urlParams = new URLSearchParams(new URL(url).search);
   return urlParams.get('list');
 }
 
-// Function to get total playlist duration, modified to accept the API key
-async function getPlaylistTotalDuration(playlistId, apiKey) {
+// Function to calculate and display the total duration of a YouTube playlist
+async function calculateAndDisplayTotalDuration(playlistId, apiKey) {
   const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}`;
   let totalDurationSeconds = 0;
   let nextPageToken = '';
@@ -91,7 +89,7 @@ async function getPlaylistTotalDuration(playlistId, apiKey) {
 
         videoDetails.items.forEach(video => {
           const duration = video.contentDetails.duration;
-          totalDurationSeconds += parseDurationToSeconds(duration);
+          totalDurationSeconds += convertIso8601DurationToSeconds(duration);
         });
       }
 
@@ -99,19 +97,16 @@ async function getPlaylistTotalDuration(playlistId, apiKey) {
       isLastPage = !nextPageToken;
     } while (!isLastPage);
 
-    // Display the total duration at normal speed
     document.getElementById('length').textContent = `Total playlist duration: ${formatDuration(totalDurationSeconds)}`;
-
-    // Display the total duration for each speed
-    displaySpeeds(totalDurationSeconds);
+    displayDurationAtDifferentSpeeds(totalDurationSeconds);
   } catch (error) {
     console.error('Error fetching playlist:', error);
     document.getElementById('length').textContent = 'Error fetching playlist data';
   }
 }
 
-// Function to convert YouTube's ISO 8601 duration format to seconds
-function parseDurationToSeconds(duration) {
+// Function to convert ISO 8601 duration format to seconds
+function convertIso8601DurationToSeconds(duration) {
   const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
   const hours = (parseInt(match[1], 10) || 0);
   const minutes = (parseInt(match[2], 10) || 0);
@@ -119,11 +114,11 @@ function parseDurationToSeconds(duration) {
   return (hours * 3600) + (minutes * 60) + seconds;
 }
 
-// Function to format seconds into a readable time format <hours> hours <minutes> minutes <seconds> seconds
+// Function to format seconds into a readable time format
 function formatDuration(seconds) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60); // Floor seconds
+  const secs = Math.floor(seconds % 60);
 
   const hoursText = hours > 0 ? `${hours} hours` : '';
   const minutesText = minutes > 0 ? `${minutes} minutes` : '';
@@ -133,7 +128,7 @@ function formatDuration(seconds) {
 }
 
 // Function to display the total duration for different playback speeds
-function displaySpeeds(totalSeconds) {
+function displayDurationAtDifferentSpeeds(totalSeconds) {
   const speeds = [1.25, 1.5, 1.75, 2];
   const speedsContainer = document.getElementById('speeds');
 
@@ -148,10 +143,10 @@ function displaySpeeds(totalSeconds) {
 }
 
 // Start the process (main function)
-(async function() {
+(async function () {
   try {
-    const apiKey = await checkApiKey();  // Await the API key retrieval
-    await getPlaylistDuration(apiKey);   // Pass the API key to the main function
+    const apiKey = await getOrPromptForApiKey();
+    await fetchAndDisplayPlaylistDuration(apiKey);
   } catch (error) {
     console.error('Error retrieving API key:', error);
   }
